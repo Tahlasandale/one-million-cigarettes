@@ -144,13 +144,112 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm('Voulez-vous vraiment changer de pseudonyme ?')) {
-      localStorage.removeItem('omc_user_name');
-      setUsername('');
-      setIsOnboarded(false);
-      setTempUsername('');
+  // Daily Streak calculation (Snapchat-style consecutive days)
+  const getDailyStreak = (photos: PhotoRecord[]): number => {
+    if (photos.length === 0) return 0;
+
+    // Get unique dates in local timezone (YYYY-MM-DD)
+    const dates = Array.from(new Set(photos.map(p => {
+      const d = new Date(p.timestamp);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }))).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
+
+    if (dates.length === 0) return 0;
+
+    const todayStr = (() => {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    })();
+
+    const yesterdayStr = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    })();
+
+    // Check if user posted today or yesterday. If neither, streak is 0.
+    const hasPostedToday = dates[0] === todayStr;
+    const hasPostedYesterday = dates[0] === yesterdayStr || (dates.length > 1 && dates[1] === yesterdayStr);
+
+    if (!hasPostedToday && !hasPostedYesterday) {
+      return 0;
     }
+
+    let streak = 1;
+    let currentDate = new Date(dates[0]);
+
+    for (let i = 1; i < dates.length; i++) {
+      const itemDate = new Date(dates[i]);
+      const diffTime = Math.abs(currentDate.getTime() - itemDate.getTime());
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        streak++;
+        currentDate = itemDate;
+      } else if (diffDays > 1) {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  // Best Streak calculation (longest streak ever)
+  const getPersonalBestStreak = (photos: PhotoRecord[]): number => {
+    if (photos.length === 0) return 0;
+
+    // Get unique dates in local timezone (YYYY-MM-DD) sorted ascending
+    const dates = Array.from(new Set(photos.map(p => {
+      const d = new Date(p.timestamp);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }))).sort((a, b) => a.localeCompare(b));
+
+    if (dates.length === 0) return 0;
+
+    let maxStreak = 1;
+    let currentStreak = 1;
+
+    for (let i = 1; i < dates.length; i++) {
+      const prevDate = new Date(dates[i - 1]);
+      const currDate = new Date(dates[i]);
+      const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        currentStreak++;
+        if (currentStreak > maxStreak) {
+          maxStreak = currentStreak;
+        }
+      } else if (diffDays > 1) {
+        currentStreak = 1;
+      }
+    }
+
+    return maxStreak;
+  };
+
+  // Personal weekly average captures
+  const getPersonalWeeklyAverage = (photos: PhotoRecord[]): string => {
+    if (photos.length === 0) return '0.0';
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now();
+    const timestamps = photos.map((item) => item.timestamp);
+    const minTimestamp = Math.min(...timestamps);
+    const elapsedMs = now - minTimestamp;
+    const elapsedWeeks = Math.max(1, Math.ceil(elapsedMs / (1000 * 60 * 60 * 24 * 7)));
+    return (photos.length / elapsedWeeks).toFixed(1);
   };
 
   // Viewfinder click triggers file input
@@ -286,6 +385,18 @@ function App() {
     (item) => item.author.toLowerCase() === username.toLowerCase()
   ).length;
 
+  const userPhotos = mergedFeed.filter(
+    (item) => item.author.toLowerCase() === username.toLowerCase()
+  );
+  const streak = getDailyStreak(userPhotos);
+  const bestStreak = getPersonalBestStreak(userPhotos);
+  const personalWeeklyAverage = getPersonalWeeklyAverage(userPhotos);
+  const percentageOfMillion = ((globalCount / 1000000) * 100).toFixed(4);
+  const lastCaptureTime = userPhotos.length > 0 ? new Date(userPhotos[0].timestamp).toLocaleString('fr-FR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }) : 'Aucune';
+
   const getPhotosTodayCount = () => {
     const today = new Date().toDateString();
     return mergedFeed.filter((item) => new Date(item.timestamp).toDateString() === today).length;
@@ -393,8 +504,8 @@ function App() {
           <span className="logo-emoji">🚬</span>
           <span className="logo-text">OMC</span>
         </div>
-        <div className="user-badge" onClick={handleLogout} title="Cliquez pour modifier">
-          👤 {username}
+        <div className="user-badge">
+          👤 {username} {streak > 0 && `🔥 ${streak}`}
         </div>
       </header>
 
@@ -535,6 +646,28 @@ function App() {
               <p className="feed-subtitle">Statistiques basées sur l'activité du dépôt GitHub</p>
             </div>
 
+            {/* Million Goal Progress Bar */}
+            <div className="goal-progress-section">
+              <div className="goal-progress-info">
+                <span className="goal-progress-title">🚬 Objectif : 1 000 000 de photos</span>
+                <span className="goal-progress-percentage">{percentageOfMillion}%</span>
+              </div>
+              <div className="goal-progress-bar-container">
+                <div 
+                  className="goal-progress-bar-fill"
+                  style={{ width: `${Math.min(100, (globalCount / 1000000) * 100)}%` }}
+                ></div>
+              </div>
+              <div className="goal-progress-footer">
+                <span>{globalCount.toLocaleString('fr-FR')} photos</span>
+                <span>Encore {(1000000 - globalCount).toLocaleString('fr-FR')} photos restantes</span>
+              </div>
+            </div>
+
+            <div className="stats-subheader">
+              <h3>Statistiques Globales</h3>
+            </div>
+
             <div className="stats-grid">
               <div className="stats-card highlight">
                 <div className="stats-header">
@@ -569,9 +702,57 @@ function App() {
               </div>
             </div>
 
+            <div className="stats-subheader">
+              <h3>Statistiques Personnelles</h3>
+            </div>
+
+            <div className="stats-grid">
+              <div className="stats-card highlight-personal">
+                <div className="stats-header">
+                  <span className="stats-title">Streak Actuel</span>
+                  <span className="stats-icon">🔥</span>
+                </div>
+                <span className="stats-value">{streak} {streak <= 1 ? 'jour' : 'jours'}</span>
+              </div>
+
+              <div className="stats-card">
+                <div className="stats-header">
+                  <span className="stats-title">Record de Streak</span>
+                  <span className="stats-icon">🏆</span>
+                </div>
+                <span className="stats-value">{bestStreak} {bestStreak <= 1 ? 'jour' : 'jours'}</span>
+              </div>
+
+              <div className="stats-card">
+                <div className="stats-header">
+                  <span className="stats-title">Votre Part</span>
+                  <span className="stats-icon">📊</span>
+                </div>
+                <span className="stats-value">
+                  {((personalCount / Math.max(1, globalCount)) * 100).toFixed(2)}%
+                </span>
+              </div>
+
+              <div className="stats-card">
+                <div className="stats-header">
+                  <span className="stats-title">Moyenne Perso</span>
+                  <span className="stats-icon">📈</span>
+                </div>
+                <span className="stats-value">{personalWeeklyAverage} / sem</span>
+              </div>
+            </div>
+
+            <div className="stats-full-width-card" style={{ marginTop: '16px', marginBottom: '24px' }}>
+              <div className="stats-header" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="stats-icon" style={{ fontSize: '1.2rem' }}>⏱️</span>
+                <span className="stats-title" style={{ margin: 0 }}>Dernière Capture</span>
+              </div>
+              <span className="stats-value-small">{lastCaptureTime}</span>
+            </div>
+
             {/* Contribution chart */}
             <div className="chart-section">
-              <h3 className="chart-title">Activité des 7 derniers jours</h3>
+              <h3 className="chart-title">Activité globale (7 derniers jours)</h3>
               <div className="activity-grid">
                 {chartData.map((day, idx) => (
                   <div className="activity-bar-container" key={idx}>
@@ -590,7 +771,7 @@ function App() {
 
             {/* PWA Installation Card */}
             {isInstallable && (
-              <div className="settings-section" style={{ marginBottom: '16px' }}>
+              <div className="settings-section" style={{ marginBottom: '16px', marginTop: '24px' }}>
                 <h3 className="chart-title">Installer l'application</h3>
                 <p className="onboarding-desc" style={{ fontSize: '0.85rem', marginBottom: '16px' }}>
                   Ajoutez OMC à votre écran d'accueil pour une expérience plein écran immersive et fluide.
@@ -610,34 +791,6 @@ function App() {
                 </button>
               </div>
             )}
-
-            {/* Profile Modification */}
-            <div className="settings-section">
-              <h3 className="chart-title">Modifier votre profil</h3>
-              <form
-                className="settings-input-group"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (tempUsername.trim()) {
-                    localStorage.setItem('omc_user_name', tempUsername.trim());
-                    setUsername(tempUsername.trim());
-                    alert('Pseudonyme enregistré !');
-                  }
-                }}
-              >
-                <input
-                  className="text-input"
-                  type="text"
-                  value={tempUsername}
-                  onChange={(e) => setTempUsername(e.target.value)}
-                  maxLength={20}
-                  required
-                />
-                <button className="btn-primary" type="submit">
-                  Sauvegarder
-                </button>
-              </form>
-            </div>
           </div>
         )}
       </main>

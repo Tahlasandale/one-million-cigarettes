@@ -102,17 +102,11 @@ h1, h2, h3, h4 {
   border-radius: 20px;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  max-width: 150px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.user-badge:hover {
-  border-color: var(--primary);
-  color: var(--text-main);
 }
 
 /* Navigation */
@@ -812,6 +806,124 @@ h1, h2, h3, h4 {
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.8);
+  }
+}
+
+/* Progress Bar & Personal Stats Styles */
+.stats-subheader {
+  margin: 24px 0 12px 0;
+  display: flex;
+  align-items: center;
+}
+
+.stats-subheader h3 {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 4px;
+}
+
+/* Million Goal Progress Bar */
+.goal-progress-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.goal-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goal-progress-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.goal-progress-percentage {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--primary);
+  text-shadow: 0 0 12px rgba(255, 94, 58, 0.4);
+}
+
+.goal-progress-bar-container {
+  width: 100%;
+  height: 12px;
+  background: #141416;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.goal-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff5e3a, #ff9233);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(255, 94, 58, 0.6);
+  transition: width 0.5s ease-out;
+  animation: progress-pulse 2s infinite alternate;
+}
+
+.goal-progress-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Personal Stats Highlight Card */
+.stats-card.highlight-personal {
+  border-color: rgba(255, 146, 51, 0.3);
+  background: linear-gradient(145deg, var(--bg-card) 0%, rgba(255, 146, 51, 0.03) 100%);
+}
+
+.stats-card.highlight-personal .stats-title {
+  color: #ff9233;
+}
+
+.stats-card.highlight-personal .stats-value {
+  color: #ff9233;
+  text-shadow: 0 0 15px rgba(255, 146, 51, 0.3);
+}
+
+/* Full Width Card */
+.stats-full-width-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stats-value-small {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: var(--font-heading);
+}
+
+@keyframes progress-pulse {
+  0% {
+    box-shadow: 0 0 8px rgba(255, 94, 58, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(255, 94, 58, 0.8);
   }
 }
 
