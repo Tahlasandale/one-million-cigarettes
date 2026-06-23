@@ -24,3 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Temp scratch and Beeper/Element raw exports
+scratch/
+whatsapp backup/element_export/
+whatsapp backup/exported_data/
+whatsapp backup/*.zip
