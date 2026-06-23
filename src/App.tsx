@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import imageCompression from 'browser-image-compression';
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 interface PhotoRecord {
   id: string;
   timestamp: number;
@@ -13,6 +22,10 @@ interface PhotoRecord {
 type TabType = 'capture' | 'feed' | 'stats';
 
 function App() {
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstallable, setIsInstallable] = useState<boolean>(false);
+
   // Authentication & Onboarding
   const [username, setUsername] = useState<string>(() => localStorage.getItem('omc_user_name') || '');
   const [isOnboarded, setIsOnboarded] = useState<boolean>(() => !!localStorage.getItem('omc_user_name'));
@@ -83,6 +96,30 @@ function App() {
       clearInterval(interval);
     };
   }, []);
+
+  // PWA Installation Prompts
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User installation choice: ${outcome}`);
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
 
   // Combine global feed and local uploads
   const getMergedFeed = (): PhotoRecord[] => {
@@ -247,6 +284,7 @@ function App() {
   const getWeeklyAverage = () => {
     if (mergedFeed.length === 0) return 0;
     
+    // eslint-disable-next-line react-hooks/purity
     const now = Date.now();
     const timestamps = mergedFeed.map((item) => item.timestamp);
     const minTimestamp = Math.min(...timestamps);
@@ -298,6 +336,22 @@ function App() {
           <p className="onboarding-desc">
             Rejoignez l'expérience PWA collaborative sans base de données. Prenez un cliché en un clic et partagez-le instantanément.
           </p>
+          {isInstallable && (
+            <button
+              className="btn-secondary"
+              onClick={handleInstallClick}
+              style={{
+                width: '100%',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              📲 Installer l'application
+            </button>
+          )}
           <form className="onboarding-form" onSubmit={handleOnboardingSubmit}>
             <div className="form-group">
               <label className="input-label" htmlFor="username">Pseudonyme anonyme</label>
@@ -495,6 +549,29 @@ function App() {
                 ))}
               </div>
             </div>
+
+            {/* PWA Installation Card */}
+            {isInstallable && (
+              <div className="settings-section" style={{ marginBottom: '16px' }}>
+                <h3 className="chart-title">Installer l'application</h3>
+                <p className="onboarding-desc" style={{ fontSize: '0.85rem', marginBottom: '16px' }}>
+                  Ajoutez OMC à votre écran d'accueil pour une expérience plein écran immersive et fluide.
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={handleInstallClick}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  📲 Installer OMC sur mon mobile
+                </button>
+              </div>
+            )}
 
             {/* Profile Modification */}
             <div className="settings-section">
