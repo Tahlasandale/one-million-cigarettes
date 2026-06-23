@@ -16,6 +16,7 @@ interface PhotoRecord {
   date: string;
   author: string;
   imageUrl: string;
+  caption?: string;
   isLocal?: boolean; // flag for immediate local feedback
 }
 
@@ -53,6 +54,7 @@ function App() {
   // Capture State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [caption, setCaption] = useState<string>('');
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   
@@ -171,6 +173,7 @@ function App() {
 
   const handleCancelPreview = () => {
     setSelectedFile(null);
+    setCaption('');
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -221,6 +224,7 @@ function App() {
         body: JSON.stringify({
           image: base64Image,
           author: username,
+          caption: caption.trim() || undefined,
         }),
       });
 
@@ -243,6 +247,7 @@ function App() {
         author: username,
         // Fallback to local preview URL for immediate display
         imageUrl: previewUrl || '', 
+        caption: caption.trim() || undefined,
         isLocal: true,
       };
 
@@ -254,6 +259,7 @@ function App() {
       // Reset states
       setSelectedFile(null);
       setPreviewUrl(null);
+      setCaption('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -423,6 +429,17 @@ function App() {
                     </div>
                   )}
                 </div>
+                <div className="preview-caption-group" style={{ width: '100%', marginTop: '16px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    className="text-input"
+                    placeholder="Légende (facultatif, ex: 5055) 🚬"
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    disabled={isUploading}
+                    maxLength={80}
+                  />
+                </div>
                 <div className="preview-actions">
                   <button
                     className="btn-secondary"
@@ -474,18 +491,25 @@ function App() {
                       />
                     </div>
                     <div className="feed-card-info">
-                      <div className="feed-card-meta">
-                        <span className="feed-card-author">@{photo.author}</span>
-                        <span className="feed-card-date">
-                          {new Date(photo.timestamp).toLocaleString('fr-FR', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })}
-                        </span>
+                      <div className="feed-card-info-top">
+                        <div className="feed-card-meta">
+                          <span className="feed-card-author">@{photo.author}</span>
+                          <span className="feed-card-date">
+                            {new Date(photo.timestamp).toLocaleString('fr-FR', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </span>
+                        </div>
+                        <button className="feed-card-action" title="Signaler cette photo">
+                          ⚠️
+                        </button>
                       </div>
-                      <button className="feed-card-action" title="Signaler cette photo">
-                        ⚠️
-                      </button>
+                      {photo.caption && (
+                        <div className="feed-card-caption">
+                          {photo.caption}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

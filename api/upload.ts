@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { image, author } = req.body;
+  const { image, author, caption } = req.body;
 
   if (!image || !author) {
     return res.status(400).json({ error: 'Missing image or author' });
@@ -88,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       date: new Date(timestamp).toISOString(),
       author: author.trim(),
       imageUrl: `/photos/${fileName}`,
+      caption: caption?.trim() || undefined,
     };
 
     // 2. Commit the update to public/data.json with conflict retry loop

@@ -229,9 +229,9 @@ function parseHtmlExport(htmlDir) {
         currentSender = senderMatch[1].trim();
       }
 
-      // Check for image link: href="images/filename"
+      // Check for image link: <a ... href="images/filename"
       // URL decoding is handled to support special characters
-      const imageMatch = chunk.match(/href="images\/([^"]+)"/);
+      const imageMatch = chunk.match(/<a\s+[^>]*href="images\/([^"]+)"/i);
       if (imageMatch) {
         const urlEncodedFileName = imageMatch[1];
         const localFileName = decodeURIComponent(urlEncodedFileName);
@@ -260,6 +260,10 @@ function parseHtmlExport(htmlDir) {
         const eventId = idMatch ? idMatch[1] : `event_${timestamp}`;
         const eventHash = eventId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
 
+        // Extract caption if present (class="mx_EventTile_caption")
+        const captionMatch = chunk.match(/class="[^"]*mx_EventTile_caption[^"]*"[^>]*>.*?dir="auto">([^<]*)<\/div>/s);
+        const caption = captionMatch ? captionMatch[1].trim() : '';
+
         const ext = path.extname(srcPath) || '.jpg';
         const sanitizedAuthor = currentSender.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
         const targetFileName = `${timestamp}_${sanitizedAuthor}_${eventHash}${ext}`;
@@ -272,7 +276,8 @@ function parseHtmlExport(htmlDir) {
             timestamp,
             date: new Date(timestamp).toISOString(),
             author: currentSender,
-            imageUrl: `/photos/${targetFileName}`
+            imageUrl: `/photos/${targetFileName}`,
+            caption: caption || undefined
           });
           successCount++;
         } catch (e) {

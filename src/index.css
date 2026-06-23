@@ -543,8 +543,28 @@ h1, h2, h3, h4 {
 .feed-card-info {
   padding: 16px;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.feed-card-info-top {
+  width: 100%;
+  display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.feed-card-caption {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  background: rgba(255, 94, 58, 0.08);
+  border-left: 3px solid var(--primary);
+  padding: 6px 12px;
+  border-radius: 4px 8px 8px 4px;
+  font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .feed-card-meta {
