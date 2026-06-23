@@ -38,9 +38,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing image or author' });
   }
 
-  const token = process.env.GITHUB_TOKEN;
-  const owner = process.env.GITHUB_OWNER;
-  const repo = process.env.GITHUB_REPO;
+  const token = process.env.GITHUB_TOKEN?.trim();
+  const owner = process.env.GITHUB_OWNER?.trim();
+  const repo = process.env.GITHUB_REPO?.trim();
 
   console.log(`[API Upload] Request received. Author: "${author}". Image length: ${image?.length} chars.`);
   console.log(`[API Upload] Target Repo config: Owner="${owner}", Repo="${repo}", Token present=${!!token}`);
