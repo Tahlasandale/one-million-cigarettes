@@ -48,6 +48,7 @@ function App() {
     return [];
   });
   const [isLoadingFeed, setIsLoadingFeed] = useState<boolean>(false);
+  const [visibleFeedCount, setVisibleFeedCount] = useState<number>(30);
 
   // Capture State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -461,7 +462,7 @@ function App() {
               </div>
             ) : (
               <div className="feed-list">
-                {mergedFeed.map((photo) => (
+                {mergedFeed.slice(0, visibleFeedCount).map((photo) => (
                   <div className="feed-card" key={photo.id}>
                     {photo.isLocal && <span className="feed-card-badge">Envoi en cours</span>}
                     <div className="feed-card-image-wrapper">
@@ -488,6 +489,16 @@ function App() {
                     </div>
                   </div>
                 ))}
+
+                {visibleFeedCount < mergedFeed.length && (
+                  <button 
+                    className="btn-secondary" 
+                    onClick={() => setVisibleFeedCount(prev => prev + 30)}
+                    style={{ width: '100%', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    Charger plus de photos ({mergedFeed.length - visibleFeedCount} restantes)
+                  </button>
+                )}
               </div>
             )}
           </div>
