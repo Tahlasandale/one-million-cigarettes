@@ -226,7 +226,10 @@ function App() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Erreur lors de l\'envoi');
+        const errorMsg = result.details
+          ? `${result.error || 'Erreur lors de l\'envoi'} (Détails: ${result.details})`
+          : (result.error || 'Erreur lors de l\'envoi');
+        throw new Error(errorMsg);
       }
 
       setUploadStatus('Succès !');

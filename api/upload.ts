@@ -42,9 +42,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const owner = process.env.GITHUB_OWNER;
   const repo = process.env.GITHUB_REPO;
 
+  console.log(`[API Upload] Request received. Author: "${author}". Image length: ${image?.length} chars.`);
+  console.log(`[API Upload] Target Repo config: Owner="${owner}", Repo="${repo}", Token present=${!!token}`);
+
   if (!token || !owner || !repo) {
     return res.status(500).json({
       error: 'GitHub configuration missing in environment variables on Vercel.',
+      details: `Token present: ${!!token}, Owner: "${owner || 'missing'}", Repo: "${repo || 'missing'}"`,
     });
   }
 
@@ -53,6 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Extract base64 image data and extension
   const matches = image.match(/^data:image\/([A-Za-z+]+);base64,(.+)$/);
   if (!matches || matches.length !== 3) {
+    console.error(`[API Upload ERROR] Invalid image payload format.`);
     return res.status(400).json({ error: 'Invalid image format' });
   }
 
@@ -67,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // 1. Commit the photo to public/photos/
+    console.log(`[API Upload] Step 1/2: Committing image file to Git at "${imagePath}"...`);
     await octokit.rest.repos.createOrUpdateFileContents({
       owner,
       repo,
@@ -74,6 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: `Upload photo: ${fileName} by ${author}`,
       content: base64Data,
     });
+    console.log(`[API Upload] Step 1/2 SUCCESS: Image file created.`);
 
     const newRecord = {
       id,
@@ -84,12 +91,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // 2. Commit the update to public/data.json with conflict retry loop
+    console.log(`[API Upload] Step 2/2: Updating "public/data.json" with conflict resolution...`);
     const maxRetries = 3;
     let attempt = 0;
     let success = false;
 
     while (attempt < maxRetries) {
       attempt++;
+      console.log(`[API Upload] Attempt ${attempt} to commit data.json...`);
       try {
         let currentSha: string | undefined;
         let currentData: unknown[] = [];
@@ -101,7 +110,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             path: 'public/data.json',
           });
 
-          // Check if response data is the file content format we expect
           if (response.data && !Array.isArray(response.data) && 'content' in response.data) {
             const fileData = response.data as GitHubContentResponse;
             currentSha = fileData.sha;
@@ -111,9 +119,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } catch (e: unknown) {
           const err = e as { status?: number };
           if (err.status !== 404) {
+            console.error(`[API Upload ERROR] Failed to fetch data.json content:`, e);
             throw e;
           }
-          // If data.json does not exist, we just keep currentData as empty array
+          console.log(`[API Upload] public/data.json does not exist. Initializing new array.`);
         }
 
         const updatedData = [newRecord, ...currentData];
@@ -128,11 +137,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         success = true;
+        console.log(`[API Upload] Step 2/2 SUCCESS: data.json updated on attempt ${attempt}.`);
         break;
       } catch (error: unknown) {
         const err = error as { status?: number };
         if (err.status === 409 && attempt < maxRetries) {
-          // Commit conflict, wait briefly and retry
+          console.warn(`[API Upload WARNING] Conflict (409) detected on attempt ${attempt}. Retrying...`);
           await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
           continue;
         }
@@ -149,11 +159,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       photo: newRecord,
     });
   } catch (err: unknown) {
-    const error = err as Error;
-    console.error('Upload error:', error);
+    const error = err as { 
+      message?: string; 
+      status?: number; 
+      response?: { data?: { message?: string } };
+    };
+    console.error('[API Upload ERROR] Full error trace:', error);
+    
+    let detailedMessage = error.message || 'Unknown error';
+    if (error.response && error.response.data && error.response.data.message) {
+      detailedMessage += ` - GitHub API: ${error.response.data.message}`;
+    }
+
     return res.status(500).json({
       error: 'Failed to upload photo to GitHub.',
-      details: error.message,
+      details: detailedMessage,
+      status: error.status,
     });
   }
 }
